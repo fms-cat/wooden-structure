@@ -169,7 +169,7 @@ static inline void accumulatorRender(int sampleCount)
 	glUniform1i(kUniformFrame, sampleCount);
 	glRecti(-1, -1, 1, 1);
 
-#if defined(RENDER_MAX_TIME_MS)
+#ifdef RENDER_MAX_TIME_MS
 	// deliberately block so we don't queue up more work than we have time for
 	glFinish();
 #endif
@@ -187,7 +187,9 @@ int WinMainCRTStartup()
 int main()
 #endif
 {
+#ifndef RENDER_EXACT_SAMPLES
 	unsigned int startTime = timeGetTime();
+#endif
 
 	DEVMODE screenSettings = {
 		{0}, 0, 0, sizeof(screenSettings), 0, DM_PELSWIDTH | DM_PELSHEIGHT,
