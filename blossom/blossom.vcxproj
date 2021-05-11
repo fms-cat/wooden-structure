@@ -128,7 +128,7 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>opengl32.lib;Winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
-      <AdditionalOptions>/CRINKLER  /RANGE:opengl32 /HASHTRIES:300 /COMPMODE:FAST /ORDERTRIES:1000 /REPORT:out.html /PROGRESSGUI /HASHSIZE:100 /UNSAFEIMPORT /UNALIGNCODE %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/CRINKLER  /RANGE:opengl32 /HASHTRIES:300 /COMPMODE:SLOW /ORDERTRIES:1000 /REPORT:out.html /PROGRESSGUI /HASHSIZE:100 /UNSAFEIMPORT /UNALIGNCODE %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PreBuildEvent>
       <Command>

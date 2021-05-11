@@ -158,7 +158,7 @@ static inline void presentSetup(int destFb)
 	glUseProgram(gShaderPresent);
 	glBindFramebuffer(GL_FRAMEBUFFER, destFb);
 
-	glDisable(GL_BLEND);
+	glBlendFunc(GL_ONE, GL_ZERO);
 
 	bindSharedUniforms();
 	glBindTexture(GL_TEXTURE_2D, fbAccumulator);
@@ -169,8 +169,10 @@ static inline void accumulatorRender(int sampleCount)
 	glUniform1i(kUniformFrame, sampleCount);
 	glRecti(-1, -1, 1, 1);
 
+#if defined(RENDER_MAX_TIME_MS)
 	// deliberately block so we don't queue up more work than we have time for
 	glFinish();
+#endif
 }
 
 static inline void presentRender(HDC hDC)

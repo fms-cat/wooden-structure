@@ -35,9 +35,11 @@
 		#define RENDER_PROGRESSIVE 0 // Revision Rules: no progressive rendering.
 	#else
 		#define WINDOW_FULLSCREEN 1
-		#define WINDOW_AUTO_SIZE 1
+		#define WINDOW_AUTO_SIZE 0
+		#define CANVAS_WIDTH  1920
+		#define CANVAS_HEIGHT 1080
 
-		#define RENDER_EXACT_SAMPLES 256 // without the constraints of party rules, we can set an exact quality bar, if we want.
+		#define RENDER_EXACT_SAMPLES 1024 // without the constraints of party rules, we can set an exact quality bar, if we want.
 
 		#define RENDER_PROGRESSIVE 0
 	#endif
