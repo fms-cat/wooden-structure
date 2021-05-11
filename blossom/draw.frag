@@ -175,14 +175,16 @@ void main() {
       vec3 N = isect.yzw;
 
       ro = rp;
-      if ( random() < 0.12 ) {
-        // weight should be 0.04 (DIELECTRIC_SPECULAR)
+
+      float F = mix( 0.04, 1.0, pow( 1.0 - dot( -rd, N ), 5.0 ) );
+      if ( random() < F / mix( 1.0 / PI, 1.0, F ) ) {
+        // weight should be F
         rd = reflect(
           rd,
           importanceSampleGGX( 0.01, N )
         );
       } else {
-        // weight should be 0.96 / PI ~= 0.305577 (albedo * (1.0 - DIELECTRIC_SPECULAR) / PI)
+        // weight should be (1.0 - F) / PI (albedo * (1.0 - F) / PI)
         colRem *= ( 0.5 + 0.3 * sin( dot( cell, vec4( 1 ) ) + vec3( 0, 1.5, 2.5 ) ) );
         colRem *= ( 0.5 + 0.3 * sin( dot( cell, vec4( 1 ) ) + vec3( 0, 1.5, 2.5 ) ) );
         rd = importanceSampleGGX( 2.0, N );
