@@ -176,8 +176,9 @@ void main() {
 
       ro = rp;
 
-      float F = mix( 0.04, 1.0, pow( 1.0 - dot( -rd, N ), 5.0 ) );
-      if ( random() < F / mix( 1.0 / PI, 1.0, F ) ) {
+      // float F = mix( 0.04, 1.0, pow( 1.0 - dot( -rd, N ), 5.0 ) );
+      // if ( random() < F / mix( 1.0 / PI, 1.0, F ) ) {
+      if ( random() < 0.12 + 2.0 * smoothstep( 0.7, -0.8, dot( -rd, N ) ) ) { // what the fuck
         // weight should be F
         rd = reflect(
           rd,
