@@ -11,9 +11,9 @@ void main() {
   vec3 col = sqrt( tex.rgb / tex.a );
 
   gl_FragColor = vec4(
-    smoothstep( 0.08, 0.94, col.x ),
-    smoothstep( 0.02, 0.98, col.y ),
-    smoothstep( -0.06, 1.08, col.z ),
+    smoothstep( 0.1, 0.8, col.x ),
+    smoothstep( 0.0, 1.0, col.y ),
+    smoothstep( -0.2, 1.3, col.z ),
     1
   );
 }
