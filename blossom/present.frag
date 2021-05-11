@@ -1,7 +1,7 @@
 /* framework header */
 #version 430
 
-layout(location = 0) uniform vec4 iResolution;
+layout(location = 0) uniform vec2 iResolution;
 layout(binding = 0) uniform sampler2D accumulatorTex;
 
 void main() {

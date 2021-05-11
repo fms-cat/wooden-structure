@@ -1,6 +1,6 @@
 /* framework header */
 #version 430
-layout(location = 0) uniform vec4 iResolution;
+layout(location = 0) uniform vec2 iResolution;
 layout(location = 1) uniform int iFrame;
 
  

@@ -136,12 +136,10 @@ GLuint makeShader(const char* source)
 
 void bindSharedUniforms()
 {
-	glUniform4f(
+	glUniform2f(
 		kUniformResolution,
 		(float)kCanvasWidth,
-		(float)kCanvasHeight,
-		(float)kCanvasWidth / (float)kCanvasHeight,
-		(float)kCanvasHeight / (float)kCanvasWidth);
+		(float)kCanvasHeight);
 }
 
 static inline void accumulatorSetup()
