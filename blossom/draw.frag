@@ -91,12 +91,8 @@ float map( vec3 p ) {
   );
 }
 
-vec3 nMap( vec3 p, vec2 d ) {
-  return normalize( vec3(
-    map( p + d.yxx ) - map( p - d.yxx ),
-    map( p + d.xyx ) - map( p - d.xyx ),
-    map( p + d.xxy ) - map( p - d.xxy )
-  ) );
+float mapWater( vec3 p ) {
+  return p.z - 8.5 + 0.04 * cyclicNoise( p, vec3( 1 ), 2.0 );
 }
 
 void main() {
@@ -107,6 +103,7 @@ void main() {
 
   gl_FragColor = vec4( 0, 0, 0, 1 );
 
+  float medium = 1.0;
   float rl = 2.0;
   vec3 ro = vec3( 3, 4, 9 );
   vec3 rd = normalize( vec3( p, -1 ) );
@@ -127,6 +124,19 @@ void main() {
     vec2 rdxy = normalize( rd.xy );
     float dmul = length( rd ) / length( rd.xy );
     float dist;
+
+    // water??
+    rl = 0.1;
+    rp = ro + rd * rl;
+
+    for ( int i = 0; i < 30; i ++ ) {
+      dist = mapWater( rp ) * medium;
+      rl += 0.5 * dist;
+      rp = ro + rd * rl;
+    }
+
+    float rlWater = rl;
+    // water end
 
     rl = 4E-3;
     rp = ro + rd * rl;
@@ -166,7 +176,7 @@ void main() {
         rl += dist;
         rp = ro + rd * rl;
 
-        if ( dist < 1E-4 ) { break; }
+        if ( dist < 1E-3 ) { break; }
         if ( rlNext < rl ) { break; }
       }
       // march end
@@ -179,12 +189,45 @@ void main() {
       if ( rl > FAR ) { break; }
     }
 
-    if ( dist > 1E-3 ) {
-      gl_FragColor = vec4( colRem * step( 0.0, rd.z ), 1 );
+    if ( dist > 1E-2 ) {
+      gl_FragColor = vec4(
+        colRem * step( 0.0, rd.z ),
+        1
+      );
       break;
     }
 
-    vec3 N = nMap( rp, vec2( 0, 1E-4 ) );
+    vec2 d = vec2( 0, 1E-3 );
+
+    rl = max( min( rl, rlWater ), 0.0 );
+    colRem *= exp( 2.0 * ( medium - 1.0 ) * rl );
+
+    if ( rl == rlWater ) {
+      vec3 N = normalize( vec3(
+        mapWater( rp + d.yxx ),
+        mapWater( rp + d.xyx ),
+        mapWater( rp + d.xxy )
+      ) - mapWater( rp ) );
+
+      ro = ro + rd * rl;
+
+      // if ( random() < F ) {
+      // if ( random() < mix( 0.04, 1.0, pow( 1.0 - dot( -rd, N ), 5.0 ) ) ) {
+      if ( random() < 0.04 + pow( 1.0 - dot( -rd, N ), 5.0 ) ) {
+        rd = reflect( rd, N );
+      } else {
+        rd = refract( rd, N, 1.04 - 0.3 * medium );
+      }
+      medium = -medium;
+
+      continue;
+    }
+
+    vec3 N = normalize( vec3(
+      map( rp + d.yxx ),
+      map( rp + d.xyx ),
+      map( rp + d.xxy )
+    ) - map( rp ) );
 
     ro = rp;
 
@@ -199,7 +242,7 @@ void main() {
       rd = reflect(
         rd,
         importanceSampleGGX( (
-          0.5
+          0.6
           - 0.3 * cyclicNoise( 8.0 * rp, cellHash.xyz, 1.0 )
           - 0.1 * ring
         ), N )
