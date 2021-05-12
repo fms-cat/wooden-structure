@@ -6,14 +6,16 @@ layout(location = 1) uniform int iFrame;
 /* vvv your shader goes here vvv */
 
 #define L(i,j) (floor((i)/(j))*(j))
-#define F(i) (fract(sin((i)*555.)*555.))
+#define F(i) (fract(sin((i)*2222.)*222.))
 
 const float PI = acos( -1. );
 const float TAU = 2.0 * PI;
 const float FAR = 1E2;
-const float MARGIN = 1.0 / 64.0;
 
+float cellSize;
 float seed;
+vec2 cellPos;
+vec4 cellHash;
 
 float hash21( vec2 v ) {
   return F( v.x + F( v.y ) );
@@ -62,23 +64,39 @@ vec3 importanceSampleGGX( float roughness, vec3 N ) {
   );
 }
 
-// near, normal
-// Ref: https://iquilezles.org/www/articles/boxfunctions/boxfunctions.htm
-vec4 isectbox( vec3 ro, vec3 rd, vec3 size ) {
-  vec3 m = 1.0 / rd;
-  vec3 n = m * ro;
-  vec3 k = abs( m ) * size;
+// distance
+float sdbox( vec3 p, vec3 s ) {
+  vec3 d = abs( p ) - s;
+  return min( max( max( d.x, d.y ), d.z ), 0.0 ) + length( max( d, vec3( 0 ) ) );
+}
 
-  vec3 t = -n + k;
-  float tFar = min( min( t.x, t.y ), t.z );
-  t = -n - k;
-  float tNear = max( max( t.x, t.y ), t.z );
+float map( vec3 p ) {
+  p -= vec3(
+    cellPos,
+    (
+      0.3 * cellHash.w
+      + 0.2 * ( cellPos.x + cellPos.y )
+    )
+  );
 
-  if ( tNear > tFar || tNear < 0.0 ) {
-    return vec4( FAR );
-  }
+  return max(
+    sdbox( p, step( cellHash.y, 0.9 ) * vec2(
+      0.5 * cellSize - 1.0 / 64.0,
+      8
+    ).xxy ),
+    -sdbox( p, step( cellHash.y, 0.4 ) * vec2(
+      0.5 * cellSize - 3.0 / 64.0,
+      9
+    ).xxy )
+  );
+}
 
-  return vec4( tNear, -sign( rd ) * step( t.yzx, t.xyz ) * step( t.zxy, t.xyz ) );
+vec3 nMap( vec3 p, vec2 d ) {
+  return normalize( vec3(
+    map( p + d.yxx ) - map( p - d.yxx ),
+    map( p + d.xyx ) - map( p - d.xyx ),
+    map( p + d.xxy ) - map( p - d.xxy )
+  ) );
 }
 
 void main() {
@@ -86,14 +104,11 @@ void main() {
   seed = float( iFrame );
 
   vec2 p = ( gl_FragCoord.xy + vec2( random(), random() ) - 0.5 * iResolution.xy ) / iResolution.y;
-  vec2 cellPos;
-  vec4 cellHash;
 
   gl_FragColor = vec4( 0, 0, 0, 1 );
 
-  float cellSize;
-  float rl = 3.0;
-  vec3 ro = vec3( 3, 5, 12 );
+  float rl = 2.0;
+  vec3 ro = vec3( 3, 4, 9 );
   vec3 rd = normalize( vec3( p, -1 ) );
   vec3 rp = ro + rd * rl;
 
@@ -101,8 +116,8 @@ void main() {
 
   ro.xy += 0.05 * vec2( random(), random() );
 
-  rp *= orthBas( vec3( 1, 2, 5 ) );
-  ro *= orthBas( vec3( 1, 2, 5 ) );
+  rp *= orthBas( vec3( 2, 2, 5 ) );
+  ro *= orthBas( vec3( 2, 2, 5 ) );
   rp.xy = mat2( 0.6, -0.7, 0.7, 0.6 ) * rp.xy;
   ro.xy = mat2( 0.6, -0.7, 0.7, 0.6 ) * ro.xy;
 
@@ -111,14 +126,14 @@ void main() {
   for ( int i = 0; i < 5; i ++ ) {
     vec2 rdxy = normalize( rd.xy );
     float dmul = length( rd ) / length( rd.xy );
+    float dist;
 
     rl = 4E-3;
     rp = ro + rd * rl;
 
     vec4 cell;
-    vec4 isect;
 
-    for( int j = 0; j < 50; j ++ ) {
+    for( int i = 0; i < 50; i ++ ) {
       // quadtree begin
       // https://www.shadertoy.com/view/7d2Szc
       cellSize = 1.0;
@@ -133,64 +148,49 @@ void main() {
       }
       // quadtree end
 
-      vec3 rpt = rp - vec3( cellPos, 0 );
-      float height = (
-        10.0
-        + 0.4 * cellHash.y
-        + 0.2 * ( cellPos.x + cellPos.y )
-      );
-
-      vec3 size = vec3( 0, 1, 1 ) * ( 0.5 * cellSize - MARGIN );
-      size.y -= MARGIN;
-      if ( cellHash.z < 0.5 ) {
-        isect = isectbox( rpt, rd, vec3( size.zz, height ) );
-      } else if ( cellHash.z < 0.9 ) {
-        isect = isectbox( rpt - size.xyx, rd, vec3( size.z, MARGIN, height ) );
-        vec4 isectb = isectbox( rpt + size.xyx, rd, vec3( size.z, MARGIN, height ) );
-        isect = isectb.x < isect.x ? isectb : isect;
-        isectb = isectbox( rpt - size.yxx, rd, vec3( MARGIN, size.z, height ) );
-        isect = isectb.x < isect.x ? isectb : isect;
-        isectb = isectbox( rpt + size.yxx, rd, vec3( MARGIN, size.z, height ) );
-        isect = isectb.x < isect.x ? isectb : isect;
-      } else {
-        isect = vec4( FAR );
-      }
-
-      if ( isect.x < FAR ) {
-        rl += isect.x;
-        rp = ro + rd * rl;
-        break;
-      }
-
       // segment begin
       // vec2 tow = sign( rdxy ) * cellSize * 0.5;
-      // vec2 v = ( tow - rpt.xy ) / rdxy;
-      vec2 v = ( ( sign( rdxy ) * cellSize * 0.5 ) - rpt.xy ) / rdxy;
+      // vec2 v = ( tow - ( rp.xy - cellPos ) ) / rdxy;
+      vec2 v = ( ( sign( rdxy ) * cellSize * 0.5 ) - rp.xy + cellPos ) / rdxy;
 
       // vec2 nextCell = tow * ( ( v.x < v.y ) ? vec2( 2, 0 ) : vec2( 0, 2 ) ),
 
       // float seg = min( v.x, v.y );
       // segment end
 
-      rl += min( v.x, v.y ) * dmul + 1E-3;
+      float rlNext = rl + min( v.x, v.y ) * dmul + 1E-3;
+
+      // march start
+      for ( int i = 0; i < 100; i ++ ) {
+        dist = map( rp );
+        rl += dist;
+        rp = ro + rd * rl;
+
+        if ( dist < 1E-4 ) { break; }
+        if ( rlNext < rl ) { break; }
+      }
+      // march end
+
+      if ( dist < 1E-2 ) { break; }
+
+      rl = rlNext;
       rp = ro + rd * rl;
 
-      if ( rl > FAR ) break;
+      if ( rl > FAR ) { break; }
     }
 
-    if ( isect.x == FAR ) {
+    if ( dist > 1E-3 ) {
       gl_FragColor = vec4( colRem * step( 0.0, rd.z ), 1 );
       break;
     }
 
-    vec3 N = isect.yzw;
+    vec3 N = nMap( rp, vec2( 0, 1E-4 ) );
 
     ro = rp;
 
-    float ring = 400.0 * ( dot( rp, cellHash.xyz - 0.5 ) + cyclicNoise( 0.2 * rp, cellHash.xyz, 2.0 ) );
-    ring = 2.0 * sin( ring ) + sin( 2.0 * ring );
-
-    float hihe = cyclicNoise( vec3( 9, 2, 2 ) * rp, cellHash.xyz, 1.0 );
+    // Ref: https://www.shadertoy.com/view/ldscDM
+    float ring = 200.0 * ( dot( rp, 0.5 - cellHash.xyz ) + cyclicNoise( 0.5 * rp, cellHash.xyz, 3.0 ) );
+    ring = pow( sin( ring ) * 0.5 + 0.5, 9.0 ) + cos( ring ) * 0.7;
 
     // float F = mix( 0.04, 1.0, pow( 1.0 - dot( -rd, N ), 5.0 ) );
     // if ( random() < F / mix( 1.0 / PI, 1.0, F ) ) {
@@ -198,13 +198,17 @@ void main() {
       // weight should be F
       rd = reflect(
         rd,
-        importanceSampleGGX( 0.5 - 0.2 * hihe - 0.03 * ring, N )
+        importanceSampleGGX( (
+          0.5
+          - 0.3 * cyclicNoise( 8.0 * rp, cellHash.xyz, 1.0 )
+          - 0.1 * ring
+        ), N )
       );
     } else {
       // weight should be (1.0 - F) / PI (albedo * (1.0 - F) / PI)
       colRem *= pow(
         0.5 - 0.3 * cos( cellPos.x + cellPos.y + cellHash.w + vec3( 0, 1.5, 2.5 ) ),
-        vec3( 2.0 + 0.1 * ring )
+        vec3( 2.0 - 0.2 * ring )
       );
       // colRem *= 0.0;
       rd = importanceSampleGGX( 2.0, N );
