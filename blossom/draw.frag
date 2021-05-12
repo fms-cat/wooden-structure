@@ -192,6 +192,16 @@ void main() {
     float ring = 200.0 * ( dot( rp, 0.5 - cellHash.xyz ) + cyclicNoise( 0.5 * rp, cellHash.xyz, 3.0 ) );
     ring = pow( sin( ring ) * 0.5 + 0.5, 9.0 ) + cos( ring ) * 0.7;
 
+    float paint = smoothstep(
+      -2.0,
+      0.0,
+      (
+        cyclicNoise( vec3( 9, 1, 1 ) * rp, -cellHash.xyz, 1.0 )
+        + 0.2 * ring
+        - length( N - nMap( rp, vec2( 0, 5E-2 ) ) )
+      )
+    );
+
     // float F = mix( 0.04, 1.0, pow( 1.0 - dot( -rd, N ), 5.0 ) );
     // if ( random() < F / mix( 1.0 / PI, 1.0, F ) ) {
     if ( random() < 0.12 + 2.0 * smoothstep( 0.7, -0.8, dot( -rd, N ) ) ) { // what the fuck
@@ -199,16 +209,21 @@ void main() {
       rd = reflect(
         rd,
         importanceSampleGGX( (
-          0.5
-          - 0.3 * cyclicNoise( 8.0 * rp, cellHash.xyz, 1.0 )
+          0.9
+          - paint * ( 0.4 + 0.3 * cyclicNoise( 8.0 * rp, cellHash.xyz, 1.0 ) )
           - 0.1 * ring
         ), N )
       );
     } else {
       // weight should be (1.0 - F) / PI (albedo * (1.0 - F) / PI)
-      colRem *= pow(
-        0.5 - 0.3 * cos( cellPos.x + cellPos.y + cellHash.w + vec3( 0, 1.5, 2.5 ) ),
-        vec3( 2.0 - 0.2 * ring )
+      colRem *= mix(
+        vec3( 0.3, 0.2, 0.1 ) + 0.01 * ring,
+        // vec3( 0.0 ),
+        pow(
+          0.5 - 0.3 * cos( cellPos.x + cellPos.y + cellHash.w + vec3( 0, 1.5, 2.5 ) ),
+          vec3( 2.0 - 0.2 * ring )
+        ),
+        paint
       );
       // colRem *= 0.0;
       rd = importanceSampleGGX( 2.0, N );
