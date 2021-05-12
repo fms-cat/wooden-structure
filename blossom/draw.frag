@@ -3,13 +3,10 @@
 layout(location = 0) uniform vec2 iResolution;
 layout(location = 1) uniform int iFrame;
 
- 
-
-
 /* vvv your shader goes here vvv */
 
 #define L(i,j) (floor((i)/(j))*(j))
-#define F(i) (fract(sin((i)*777.)*777.))
+#define F(i) (fract(sin((i)*555.)*555.))
 
 const float PI = acos( -1. );
 const float TAU = 2.0 * PI;
@@ -37,12 +34,25 @@ mat3 orthBas( vec3 d ) {
   return mat3( x, y, z );
 }
 
-vec3 importanceSampleGGX( float roughnessSqSq, vec3 N ) {
+float cyclicNoise( vec3 p, vec3 b, float pump ) {
+  mat3 bas = orthBas( b );
+  vec2 sum = vec2( 0.0 );
+
+  for ( int i = 0; i < 5; i ++ ) {
+    p *= bas * 2.0;
+    p += sin( p.yzx );
+    sum = pump * sum + vec2( dot( sin( p.zxy ), cos( p ) ), 1.0 );
+  }
+
+  return sum.x / sum.y;
+}
+
+vec3 importanceSampleGGX( float roughness, vec3 N ) {
   float phi = TAU * random();
   float cosTheta = random();
-  cosTheta = roughnessSqSq > 1.0 // use lambert ???
+  cosTheta = roughness > 1.0 // use lambert ???
     ? cos( asin( sqrt( cosTheta ) ) )
-    : sqrt( ( 1.0 - cosTheta ) / ( 1.0 + ( roughnessSqSq - 1.0 ) * cosTheta ) );
+    : sqrt( ( 1.0 - cosTheta ) / ( 1.0 + ( pow( roughness, 4.0 ) - 1.0 ) * cosTheta ) );
   float sinTheta = sqrt( 1.0 - cosTheta * cosTheta );
 
   return orthBas( N ) * vec3(
@@ -82,8 +92,8 @@ void main() {
   gl_FragColor = vec4( 0, 0, 0, 1 );
 
   float cellSize;
-  float rl = 2.5;
-  vec3 ro = vec3( -0.5, 0, 4 );
+  float rl = 3.0;
+  vec3 ro = vec3( 3, 5, 12 );
   vec3 rd = normalize( vec3( p, -1 ) );
   vec3 rp = ro + rd * rl;
 
@@ -125,7 +135,7 @@ void main() {
 
       vec3 rpt = rp - vec3( cellPos, 0 );
       float height = (
-        1.0
+        10.0
         + 0.4 * cellHash.y
         + 0.2 * ( cellPos.x + cellPos.y )
       );
@@ -177,18 +187,26 @@ void main() {
 
     ro = rp;
 
+    float ring = 400.0 * ( dot( rp, cellHash.xyz - 0.5 ) + cyclicNoise( 0.2 * rp, cellHash.xyz, 2.0 ) );
+    ring = 2.0 * sin( ring ) + sin( 2.0 * ring );
+
+    float hihe = cyclicNoise( vec3( 9, 2, 2 ) * rp, cellHash.xyz, 1.0 );
+
     // float F = mix( 0.04, 1.0, pow( 1.0 - dot( -rd, N ), 5.0 ) );
     // if ( random() < F / mix( 1.0 / PI, 1.0, F ) ) {
     if ( random() < 0.12 + 2.0 * smoothstep( 0.7, -0.8, dot( -rd, N ) ) ) { // what the fuck
       // weight should be F
       rd = reflect(
         rd,
-        importanceSampleGGX( 0.01, N )
+        importanceSampleGGX( 0.5 - 0.2 * hihe - 0.03 * ring, N )
       );
     } else {
       // weight should be (1.0 - F) / PI (albedo * (1.0 - F) / PI)
-      colRem *= ( 0.5 + 0.3 * sin( cellPos.x + cellPos.y + cellHash.w + vec3( 0, 1.5, 2.5 ) ) );
-      colRem *= ( 0.5 + 0.3 * sin( cellPos.x + cellPos.y + cellHash.w + vec3( 0, 1.5, 2.5 ) ) );
+      colRem *= pow(
+        0.5 - 0.3 * cos( cellPos.x + cellPos.y + cellHash.w + vec3( 0, 1.5, 2.5 ) ),
+        vec3( 2.0 + 0.1 * ring )
+      );
+      // colRem *= 0.0;
       rd = importanceSampleGGX( 2.0, N );
     }
   }
