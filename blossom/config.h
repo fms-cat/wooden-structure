@@ -39,7 +39,7 @@
 		#define CANVAS_WIDTH  1920
 		#define CANVAS_HEIGHT 1080
 
-		#define RENDER_EXACT_SAMPLES 1024 // without the constraints of party rules, we can set an exact quality bar, if we want.
+		#define RENDER_EXACT_SAMPLES 512 // without the constraints of party rules, we can set an exact quality bar, if we want.
 
 		#define RENDER_PROGRESSIVE 0
 	#endif
